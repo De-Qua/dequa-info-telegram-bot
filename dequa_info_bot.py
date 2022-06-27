@@ -6,6 +6,7 @@ import yaml
 
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.utils.helpers import escape_markdown
 
 
 SETTINGS_FILE = "env/env.yml"
@@ -37,7 +38,7 @@ def ping(url: str) -> int:
     return res
 
 
-def status_server():
+def status_server() -> bool:
     "Check the status of the server"
     resp = ping('185.197.195.113')
     if resp == 0:
@@ -46,7 +47,7 @@ def status_server():
         return False
 
 
-def status_site():
+def status_site() -> bool:
     "Get the status of the website"
     resp = requests.get(URL_SITE)
     if resp.status_code == 200:
@@ -55,7 +56,7 @@ def status_site():
         return False
 
 
-def status_api():
+def status_api() -> bool:
     "Get the status of the backend"
     resp = requests.get(URL_API, headers=HEADER)
     if resp.status_code == 200:
@@ -64,7 +65,7 @@ def status_api():
         return False
 
 
-def status_tiles():
+def status_tiles() -> bool:
     "Get the status of the tiles"
     resp = requests.get(URL_TILES)
     status = resp.status_code
@@ -113,6 +114,26 @@ def write_status(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(msg)
 
 
+def get_system_info(update: Update, context: CallbackContext) -> None:
+    resp = requests.get(URL_API, headers=HEADER)
+    if resp.status_code != 200:
+        update.message.reply_text(f"There is a problem retrieving system info (Status Code {resp.status_code}). Check the status of the system!")
+        return
+    resp_json = resp.json()
+    if resp_json["ResponseCode"] != 0:
+        update.message.reply_text(f"There is a problem retrieving system info (ResponseCode {resp_json['ResponseCode']}). Check the status of the system")
+        return
+
+    info = resp_json["ResponseData"]
+    msg = ""
+    for key in info.keys():
+        msg += f"*{escape_markdown(f'{key}', version=2)}*\n"
+        for subkey, val in info[key].items():
+            msg += f"\t_{escape_markdown(f'{subkey}', version=2)}_:\t{escape_markdown(f'{val}', version=2)}\n"
+
+    update.message.reply_text(msg, parse_mode="MarkdownV2")
+
+
 def info_chat(update: Update, context: CallbackContext) -> None:
     chat_id = update.effective_message.chat_id
     update.message.reply_text(f"This is chat: {chat_id}")
@@ -129,6 +150,7 @@ def main() -> None:
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("status", write_status))
     dispatcher.add_handler(CommandHandler("chatinfo", info_chat))
+    dispatcher.add_handler(CommandHandler("info", get_system_info))
 
     jobs.run_repeating(warn_status, interval=INTERVAL_STATUS_CHECK)
 
