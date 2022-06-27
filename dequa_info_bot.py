@@ -85,6 +85,18 @@ def get_status() -> dict:
     return status
 
 
+def warn_status(context: CallbackContext) -> None:
+    status = get_status()
+    if all(status.values()):
+        # everything is ok
+        return
+    else:
+        msg_status_list = [f"{GREEN_LIGHT if val else RED_LIGHT} \t {key.title()}" for key, val in status.items()]
+        msg_status = '\n'.join(msg_status_list)
+        msg = f"Something is wrong:\n{msg_status}"
+        context.bot.send_message(chat_id='', text=msg)
+
+
 def write_status(update: Update, context: CallbackContext) -> None:
     status = get_status()
     msg_status_list = [f"{GREEN_LIGHT if val else RED_LIGHT} \t {key.title()}" for key, val in status.items()]
@@ -92,7 +104,11 @@ def write_status(update: Update, context: CallbackContext) -> None:
     msg = f"DeQua status:\n{msg_status}"
 
     update.message.reply_text(msg)
-    return
+
+
+def info_chat(update: Update, context: CallbackContext) -> None:
+    chat_id = update.effective_message.chat_id
+    update.message.reply_text(f"This is chat: {chat_id}")
 
 
 def main() -> None:
@@ -104,6 +120,7 @@ def main() -> None:
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("status", write_status))
+    dispatcher.add_handler(CommandHandler("chatinfo", info_chat))
 
     # Start the Bot
     updater.start_polling()
