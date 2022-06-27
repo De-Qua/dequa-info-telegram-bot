@@ -2,16 +2,22 @@ import os
 import requests
 import subprocess as sp
 
-from dotenv import load_dotenv
+import yaml
 
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
 
-load_dotenv()
+SETTINGS_FILE = "env/env.yml"
+DEFAULT_INTERVAL_STATUS_CHECK = 300
 
-TOKEN = os.getenv("TOKEN")
-API_TOKEN = os.getenv("API_TOKEN")
+with open(SETTINGS_FILE, 'r') as stream:
+    settings = yaml.load(stream, Loader=yaml.FullLoader)
+
+TOKEN = settings["TOKEN"]
+API_TOKEN = settings["API_TOKEN"]
+WARNING_CHAT_IDS = settings["WARNING_CHAT_IDS"]
+INTERVAL_STATUS_CHECK = settings.get("INTERVAL_STATUS_CHECK", DEFAULT_INTERVAL_STATUS_CHECK)
 
 URL_TILES = "https://tiles.dequa.it/health"
 URL_API = "https://api.dequa.it/api/system_info"
@@ -87,14 +93,15 @@ def get_status() -> dict:
 
 def warn_status(context: CallbackContext) -> None:
     status = get_status()
-    if all(status.values()):
+    if not all(status.values()):
         # everything is ok
         return
     else:
         msg_status_list = [f"{GREEN_LIGHT if val else RED_LIGHT} \t {key.title()}" for key, val in status.items()]
         msg_status = '\n'.join(msg_status_list)
-        msg = f"Something is wrong:\n{msg_status}"
-        context.bot.send_message(chat_id='', text=msg)
+        msg = f"Something is DOWN\n{msg_status}"
+        for chat_id in WARNING_CHAT_IDS:
+            context.bot.send_message(chat_id=chat_id, text=msg)
 
 
 def write_status(update: Update, context: CallbackContext) -> None:
@@ -114,6 +121,7 @@ def info_chat(update: Update, context: CallbackContext) -> None:
 def main() -> None:
     # Create the Updater and pass it your bot's token.
     updater = Updater(TOKEN)
+    jobs = updater.job_queue
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -121,6 +129,8 @@ def main() -> None:
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("status", write_status))
     dispatcher.add_handler(CommandHandler("chatinfo", info_chat))
+
+    jobs.run_repeating(warn_status, interval=INTERVAL_STATUS_CHECK)
 
     # Start the Bot
     updater.start_polling()
@@ -130,4 +140,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-   main()
+    main()

@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9.2=h2502468_0_cpython
-  - python-dotenv=0.16.0=pyhd8ed1ab_0
-  - python-telegram-bot=13.5=pyhd8ed1ab_0
+  - python=3.9.2
+  - python-dotenv=0.16.0
+  - python-telegram-bot=13.5
+  - pyyaml=5.4.1
