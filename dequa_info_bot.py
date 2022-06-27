@@ -93,7 +93,7 @@ def get_status() -> dict:
 
 def warn_status(context: CallbackContext) -> None:
     status = get_status()
-    if not all(status.values()):
+    if all(status.values()):
         # everything is ok
         return
     else:
