@@ -1,4 +1,4 @@
-import os
+import time
 import requests
 import subprocess as sp
 
@@ -28,13 +28,20 @@ HEADER = {'Authorization': "Bearer " + API_TOKEN}
 GREEN_LIGHT = "\U0001F7E2"
 RED_LIGHT = "\U0001F534"
 
+MAX_PING_ATTEMPTS = 5
+
 
 def ping(url: str) -> int:
     "Ping a website. Return a code: 0 means ping succesful."
-    res = sp.call(['ping', '-c', '1', url],
-                  stdout=sp.DEVNULL,
-                  stderr=sp.DEVNULL
-                  )
+    for _ in range(MAX_PING_ATTEMPTS):
+        res = sp.call(['ping', '-c', '1', url],
+                      stdout=sp.DEVNULL,
+                      stderr=sp.DEVNULL
+                      )
+        if res == 0:
+            return res
+        else:
+            time.sleep(1)
     return res
 
 
